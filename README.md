@@ -100,6 +100,6 @@ $env:REPORTER="true"; npm run test:checkout
 
 ## Submissão do exercício
 
+- Repositório: <https://github.com/andre-sostenes/ebac-store-mobile-tests>
 - Repositório público
 - Branch utilizada: `main`
-- Link do repositório como resposta no exercício
