@@ -1,0 +1,16 @@
+node_modules/
+.env
+allure-results/
+allure-report/
+screenshots/
+*.log
+
+# Binários do app (baixe conforme o README)
+app/*.app
+app/*.ipa
+app/*.zip
+app/*.apks
+app/*.aab
+
+.DS_Store
+Thumbs.db
