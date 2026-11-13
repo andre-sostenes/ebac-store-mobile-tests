@@ -3,6 +3,8 @@ node_modules/
 allure-results/
 allure-report/
 screenshots/
+sauce-artifacts/
+.sauce/
 *.log
 
 # Binários do app (baixe conforme o README)

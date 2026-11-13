@@ -1,5 +1,7 @@
 # EBAC Store — Testes iOS
 
+[![Mobile CI - SauceLabs](https://github.com/andre-sostenes/ebac-store-mobile-tests/actions/workflows/ci.yml/badge.svg?branch=ci)](https://github.com/andre-sostenes/ebac-store-mobile-tests/actions/workflows/ci.yml)
+
 Suíte de testes automatizados para iOS do app **LojaEBAC**, cobrindo o fluxo completo de compra:
 
 1. Login
@@ -11,12 +13,15 @@ Suíte de testes automatizados para iOS do app **LojaEBAC**, cobrindo o fluxo co
 7. Finalização do checkout
 8. Validação da tela de pedido concluído
 
-Projeto construído com **WebdriverIO v8 + Appium 2 + XCUITest + Mocha**.
+Projeto construído com **WebdriverIO v8 + Appium 2 + XCUITest + Mocha**, com execução em
+**Device Farm (SauceLabs) via GitHub Actions**.
 
 ## Estrutura
 
 ```
+.github/workflows/ci.yml  Pipeline de CI (GitHub Actions + SauceLabs)
 config/                 Configurações do WDIO (local, SauceLabs, suites, hooks e reports)
+scripts/                Upload do app e download de artefatos do SauceLabs
 test/
   data/user.js          Credenciais e dados usados nos testes
   pageobjects/          Page Objects das telas do app
@@ -25,7 +30,7 @@ test/
     login.test.js
     product.test.js
     search.test.js
-app/                    Coloque aqui o aplicativo .app (não versionado)
+app/                    Coloque aqui o aplicativo (não versionado)
 ```
 
 ## Pré-requisitos
@@ -36,8 +41,9 @@ app/                    Coloque aqui o aplicativo .app (não versionado)
 - Appium 2 ou 3 (veja a tabela de compatibilidade abaixo)
 - macOS com Xcode e um simulador iOS **ou** uma conta SauceLabs
 - App do exercício:
-  - Simulador: `LojaEBAC-sim.app`
-  - Device real / SauceLabs: `LojaEBAC.ipa`
+  - Simulador local: `LojaEBAC-sim.app`
+  - Simulador no SauceLabs: `LojaEBAC-sim.zip`
+  - Device real: `LojaEBAC.ipa`
   - Download: <https://github.com/EBAC-QE/ebac-store-mobile-tests/tree/ios/app>
 
 Instale as dependências e o driver do XCUITest:
@@ -73,7 +79,16 @@ cp .env.example .env
 
 Para rodar no simulador local, baixe o `LojaEBAC-sim.app` e coloque em `app/LojaEBAC-sim.app` (ou defina `APP_PATH` no `.env`).
 
-Para rodar no SauceLabs, preencha `SAUCE_USERNAME` e `SAUCE_ACCESS_KEY`, faça upload do `LojaEBAC.ipa` no SauceLabs e use `ENVIRONMENT=saucelabs`.
+Para rodar no SauceLabs, preencha `SAUCE_USERNAME` e `SAUCE_ACCESS_KEY`, envie o build de simulador e use `ENVIRONMENT=saucelabs`:
+
+```powershell
+$env:ENVIRONMENT="saucelabs"
+npm.cmd run sauce:upload -- app\LojaEBAC-sim.zip
+npm.cmd run test:sauce
+npm.cmd run sauce:artifacts
+```
+
+O script de upload imprime a capability `appium:app=storage:filename=...`; por padrão o `sauce.conf.js` usa `storage:filename=LojaEBAC-sim.zip`, `iPhone 15 Simulator` e iOS `17.5`. Esses valores podem ser alterados no `.env` (`SAUCE_APP`, `SAUCE_DEVICE_NAME`, `SAUCE_PLATFORM_VERSION`).
 
 ## Execução
 
@@ -102,6 +117,37 @@ No PowerShell:
 ```powershell
 $env:REPORTER="true"; npm run test:checkout
 ```
+
+## CI — GitHub Actions + SauceLabs
+
+O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) executa a suíte no
+SauceLabs a cada push na branch `ci`. Também pode ser disparado manualmente em
+**Actions → Mobile CI - SauceLabs → Run workflow**, escolhendo a suíte e o device.
+
+### Secrets e variáveis
+
+Em **Settings → Secrets and variables → Actions** do repositório:
+
+| Nome | Tipo | Obrigatório | Descrição |
+| --- | --- | --- | --- |
+| `SAUCE_USERNAME` | secret | sim | Usuário do SauceLabs |
+| `SAUCE_ACCESS_KEY` | secret | sim | Access key do SauceLabs |
+| `SAUCE_REGION` | variable | não | `us-west-1` (padrão) ou `eu-central-1` |
+| `SAUCE_APPIUM_VERSION` | variable | não | Versão do Appium no Sauce (padrão `2.11.3`) |
+
+Sem os dois secrets o pipeline falha na primeira etapa com uma mensagem explícita.
+
+### O que o pipeline faz
+
+1. `npm ci`
+2. Baixa o `LojaEBAC-sim.zip` do repositório oficial da EBAC
+3. Envia o app para o Sauce Storage (`scripts/sauce-upload.mjs`)
+4. Executa o `checkout.test.js` no SauceLabs (padrão: iPhone 15 Simulator, iOS 17.5)
+5. Baixa vídeo e logs da sessão (`scripts/sauce-artifacts.mjs`)
+6. Publica `sauce-artifacts/` e `allure-results/` como artifacts e escreve o link do job no resumo da execução
+
+O vídeo fica em `sauce-artifacts/video.mp4` (artifact `sauce-artifacts-<run>`) e o job
+em `https://app.saucelabs.com/tests/<session-id>`.
 
 ## Detalhes da implementação
 
@@ -136,6 +182,7 @@ XCUITest depende do Xcode/WebDriverAgent, disponíveis apenas no macOS. No Windo
 
 ## Submissão do exercício
 
-- Repositório: <https://github.com/andre-sostenes/ebac-store-mobile-tests>
-- Repositório público
-- Branch utilizada: `main`
+- Repositório (público): <https://github.com/andre-sostenes/ebac-store-mobile-tests>
+- Branch utilizada: **`ci`**
+- Pipeline: <https://github.com/andre-sostenes/ebac-store-mobile-tests/actions/workflows/ci.yml>
+- Vídeo da execução: artifact `sauce-artifacts-<run>` (ou link do job no SauceLabs)

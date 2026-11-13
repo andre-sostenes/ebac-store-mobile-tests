@@ -1,0 +1,95 @@
+name: Mobile CI - SauceLabs
+
+on:
+  push:
+    branches: [ci]
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Suite do WDIO
+        type: choice
+        options: [checkout, login, search, product]
+        default: checkout
+      device:
+        description: Device no SauceLabs
+        type: string
+        default: iPhone 15 Simulator
+      platform_version:
+        description: Versão do iOS
+        type: string
+        default: '17.5'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sauce-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios-tests:
+    name: iOS - ${{ inputs.device || 'iPhone 15 Simulator' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    env:
+      ENVIRONMENT: saucelabs
+      REPORTER: 'true'
+      SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
+      SAUCE_ACCESS_KEY: ${{ secrets.SAUCE_ACCESS_KEY }}
+      SAUCE_REGION: ${{ vars.SAUCE_REGION || 'us-west-1' }}
+      SAUCE_APP: storage:filename=LojaEBAC-sim.zip
+      SAUCE_DEVICE_NAME: ${{ inputs.device || 'iPhone 15 Simulator' }}
+      SAUCE_PLATFORM_VERSION: ${{ inputs.platform_version || '17.5' }}
+      SAUCE_APPIUM_VERSION: ${{ vars.SAUCE_APPIUM_VERSION || '2.11.3' }}
+      SAUCE_BUILD: ebac-store-ios-gh-${{ github.run_number }}
+      SAUCE_NAME: EBAC Store - Checkout iOS (GH #${{ github.run_number }})
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Validar credenciais do SauceLabs
+        run: |
+          if [ -z "$SAUCE_USERNAME" ] || [ -z "$SAUCE_ACCESS_KEY" ]; then
+            echo "::error::Configure os secrets SAUCE_USERNAME e SAUCE_ACCESS_KEY neste repositório."
+            exit 1
+          fi
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Baixar app de simulador
+        run: |
+          mkdir -p app
+          curl -fsSL --retry 3 \
+            -o app/LojaEBAC-sim.zip \
+            https://raw.githubusercontent.com/EBAC-QE/ebac-store-mobile-tests/ios/app/LojaEBAC-sim.zip
+          ls -lh app/LojaEBAC-sim.zip
+
+      - name: Enviar app para o Sauce Storage
+        run: node scripts/sauce-upload.mjs app/LojaEBAC-sim.zip
+
+      - name: Executar testes no SauceLabs
+        run: npx wdio run ./config/wdio.conf.js --suite "${{ inputs.suite || 'checkout' }}"
+
+      - name: Coletar vídeo e logs
+        if: always()
+        run: node scripts/sauce-artifacts.mjs
+
+      - name: Publicar artefatos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sauce-artifacts-${{ github.run_number }}
+          path: |
+            sauce-artifacts/
+            allure-results/
+          if-no-files-found: warn
+          retention-days: 30

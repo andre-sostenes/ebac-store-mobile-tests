@@ -24,6 +24,9 @@
     "test:login": "wdio run ./config/wdio.conf.js --suite login",
     "test:search": "wdio run ./config/wdio.conf.js --suite search",
     "test:product": "wdio run ./config/wdio.conf.js --suite product",
+    "test:sauce": "wdio run ./config/wdio.conf.js --suite checkout",
+    "sauce:upload": "node scripts/sauce-upload.mjs",
+    "sauce:artifacts": "node scripts/sauce-artifacts.mjs",
     "report": "allure generate allure-results --clean && allure open"
   },
   "dependencies": {
