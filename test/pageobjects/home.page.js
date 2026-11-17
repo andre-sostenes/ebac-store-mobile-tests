@@ -44,20 +44,22 @@ class HomePage {
         const tab = driver.isIOS ? menu : androidTabs[menu]
         const tabElement = $(`~tab-${tab}`)
 
-        // Enquanto a Home carrega no device farm, cada busca de elemento pode
-        // levar dezenas de segundos; por isso a primeira espera é curta e o
-        // fallback (reiniciar o app) usa um timeout bem maior.
-        const found = await tabElement.waitForExist({ timeout: 30000 }).catch(() => false)
+        // A tab bar pode ficar oculta (display: none) depois do login ou ao
+        // voltar da tela de produto. Nesse caso o elemento existe na árvore,
+        // mas o clique é ignorado. Exigir visible antes de clicar evita o
+        // falso positivo; se não ficar visível, reinicia o app (a sessão do
+        // usuário é mantida) e tenta novamente.
+        let visible = await tabElement.waitForDisplayed({ timeout: 15000 }).catch(() => false)
 
-        if (!found) {
-            // A tab bar pode ficar oculta (display: none) depois do login,
-            // quando o teclado virtual estava aberto. Reiniciar o app volta
-            // ao estado inicial com as abas visíveis e a sessão mantida.
+        if (!visible) {
             await this.restartApp()
-            await tabElement.waitForExist({ timeout: 180000 })
+            visible = await tabElement.waitForDisplayed({ timeout: 180000 }).catch(() => false)
+
+            if (!visible) {
+                throw new Error(`A aba ${menu} não ficou visível após reiniciar o app`)
+            }
         }
 
-        await tabElement.waitForDisplayed({ timeout: 30000 }).catch(() => {})
         await tap(tabElement)
     }
 
@@ -67,8 +69,30 @@ class HomePage {
     }
 
     async openCart () {
-        await this.cartIcon.waitForDisplayed()
-        await tap(this.cartIcon)
+        // Depois de voltar da tela de produto, o clique no ícone do carrinho
+        // pode ser ignorado pelo WDA. Tenta o clique normal e, se a tela não
+        // abrir, repete tocando nas coordenadas do próprio elemento.
+        for (let attempt = 1; attempt <= 2; attempt++) {
+            try {
+                await this.cartIcon.waitForDisplayed()
+                await tap(this.cartIcon)
+                await driver.pause(3000)
+
+                if (await $('~selectAddressOrContinueToPayment').isExisting()) return
+
+                const rect = await this.cartIcon.getLocation()
+                const size = await this.cartIcon.getSize()
+                await driver.execute('mobile: tap', {
+                    x: Math.round(rect.x + size.width / 2),
+                    y: Math.round(rect.y + size.height / 2)
+                })
+                await driver.pause(3000)
+
+                if (await $('~selectAddressOrContinueToPayment').isExisting()) return
+            } catch (error) {
+                console.warn(`Tentativa ${attempt} de abrir o carrinho falhou: ${error.message}`)
+            }
+        }
     }
 }
 

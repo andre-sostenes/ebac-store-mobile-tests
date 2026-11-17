@@ -8,7 +8,7 @@ import cartPage from '../pageobjects/cart.page.js'
 import addressPage from '../pageobjects/address.page.js'
 import paymentPage from '../pageobjects/payment.page.js'
 import orderSuccessPage from '../pageobjects/orderSuccess.page.js'
-import { user, address, searchTerm } from '../data/user.js'
+import { user, address, searchTerm, inStockPrice } from '../data/user.js'
 
 describe('Checkout', () => {
     it('should complete the purchase flow from login to order confirmation', async () => {
@@ -39,16 +39,14 @@ describe('Checkout', () => {
         // renderizada depois que a lista de produtos termina de carregar.
         await homePage.openMenu('Browse')
         await browsePage.search(searchTerm)
-        await browsePage.selectProduct(0)
+        await browsePage.selectProduct(0, inStockPrice)
         await expect(productPage.addToCartButton).toBeDisplayed()
 
-        // 3. Adiciona o produto ao carrinho
+        // 3. Adiciona o produto ao carrinho. O próprio app navega para a tela
+        // do carrinho quando `updateCart` retorna sucesso.
         await productPage.addToCart()
-        await productPage.goBack()
 
-        // 4. Abre o carrinho
-        await homePage.openMenu('Home')
-        await homePage.openCart()
+        // 4. Confere o carrinho
         await cartPage.waitForCart()
         expect(await cartPage.total.getText()).toContain('R$')
 

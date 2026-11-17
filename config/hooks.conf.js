@@ -4,21 +4,24 @@ import { driver } from '@wdio/globals'
 
 const BUNDLE_ID = 'br.com.lojaebac'
 const SAUCE_SESSION_FILE = process.env.SAUCE_SESSION_FILE || path.resolve('.sauce', 'session-id.txt')
+const BROWSERSTACK_SESSION_FILE = process.env.BROWSERSTACK_SESSION_FILE || path.resolve('.browserstack', 'session-id.txt')
+const REMOTE_ENVIRONMENTS = ['saucelabs', 'browserstack']
 
 /**
  * A Home do app renderiza a lista completa de produtos (sem virtualização),
- * o que gera milhares de nós na árvore de acessibilidade. No device farm o
- * snapshot do XCUITest passa a estourar o timeout de 60 s do XCTest e cada
- * busca de elemento leva de 60 a 270 s (medido em sessão real do SauceLabs).
+ * o que gera milhares de nós na árvore de acessibilidade. Em simuladores
+ * lentos o snapshot do XCUITest chega a estourar o timeout do XCTest.
  *
- * Limitar a profundidade e a quantidade de filhos por nó e usar a primeira
- * ocorrência reduz o custo do snapshot, mantendo acessíveis os testIDs que o
- * teste usa (barra de abas, campo de busca, botões).
+ * Os settings abaixo reduzem o custo do snapshot sem remover os testIDs das
+ * telas internas. Valores baixos de snapshotMaxDepth (ex.: 25) escondem os
+ * campos de login em devices reais; 100 é suficiente para o fluxo inteiro.
  */
 const XCUITEST_SETTINGS = {
-    useFirstMatch: true,
-    snapshotMaxDepth: 25,
-    snapshotMaxChildren: 40,
+    // useFirstMatch e profundidade muito baixa cortam os campos do login e
+    // os testIDs das telas internas em devices reais (medido no BrowserStack).
+    useFirstMatch: false,
+    snapshotMaxDepth: Number(process.env.SNAPSHOT_MAX_DEPTH || 100),
+    snapshotMaxChildren: Number(process.env.SNAPSHOT_MAX_CHILDREN || 200),
     animationCoolOffTimeout: 0,
     waitForIdleTimeout: 0,
     reduceMotion: true,
@@ -36,23 +39,26 @@ async function applyXcuitestSettings () {
 
 export let hooksConf = {
     /**
-     * Guarda o ID da sessão do SauceLabs para que o pipeline consiga baixar
+     * Guarda o ID da sessão do device farm para que o pipeline consiga baixar
      * o vídeo e os logs da execução ao final do job. O hook `before` roda
      * depois da sessão ser criada e antes da primeira suíte; `afterSession`
      * não serve porque o WDIO já encerrou a sessão nesse ponto.
      */
     before: async function () {
-        if (process.env.ENVIRONMENT !== 'saucelabs') return
+        const environment = process.env.ENVIRONMENT
+        if (!REMOTE_ENVIRONMENTS.includes(environment)) return
 
         const id = driver.sessionId
         if (!id) return
 
+        const sessionFile = environment === 'browserstack' ? BROWSERSTACK_SESSION_FILE : SAUCE_SESSION_FILE
+
         try {
-            fs.mkdirSync(path.dirname(SAUCE_SESSION_FILE), { recursive: true })
-            fs.writeFileSync(SAUCE_SESSION_FILE, id, 'utf8')
-            console.log(`Sessão SauceLabs: ${id}`)
+            fs.mkdirSync(path.dirname(sessionFile), { recursive: true })
+            fs.writeFileSync(sessionFile, id, 'utf8')
+            console.log(`Sessão ${environment}: ${id}`)
         } catch (error) {
-            console.warn(`Não foi possível salvar o ID da sessão do SauceLabs: ${error.message}`)
+            console.warn(`Não foi possível salvar o ID da sessão (${environment}): ${error.message}`)
         }
 
         await applyXcuitestSettings()

@@ -6,8 +6,7 @@ import { searchTerm } from '../data/user.js'
 
 describe('Product Details', () => {
     it('should open a product and show the add to cart action', async () => {
-        await homePage.openMenu('Home')
-        await homePage.openSearch()
+        await homePage.openMenu('Browse')
         await browsePage.search(searchTerm)
         await browsePage.selectProduct(0)
 

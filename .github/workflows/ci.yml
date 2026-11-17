@@ -1,4 +1,4 @@
-name: Mobile CI - SauceLabs
+name: Mobile CI - BrowserStack
 
 on:
   push:
@@ -11,39 +11,37 @@ on:
         options: [checkout, login, search, product]
         default: checkout
       device:
-        description: Device no SauceLabs
+        description: Device no BrowserStack
         type: string
-        default: iPhone 15 Simulator
-      platform_version:
+        default: iPhone 15
+      os_version:
         description: Versão do iOS
         type: string
-        default: '17.0'
+        default: '17'
 
 permissions:
   contents: read
 
 concurrency:
-  group: sauce-${{ github.ref }}
+  group: browserstack-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   ios-tests:
-    name: iOS - ${{ inputs.device || 'iPhone 15 Simulator' }}
+    name: iOS - ${{ inputs.device || 'iPhone 15' }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
 
     env:
-      ENVIRONMENT: saucelabs
+      ENVIRONMENT: browserstack
       REPORTER: 'true'
-      SAUCE_USERNAME: ${{ secrets.SAUCE_USERNAME }}
-      SAUCE_ACCESS_KEY: ${{ secrets.SAUCE_ACCESS_KEY }}
-      SAUCE_REGION: ${{ vars.SAUCE_REGION || 'us-west-1' }}
-      SAUCE_APP: storage:filename=LojaEBAC-sim.zip
-      SAUCE_DEVICE_NAME: ${{ inputs.device || 'iPhone 15 Simulator' }}
-      SAUCE_PLATFORM_VERSION: ${{ inputs.platform_version || '17.0' }}
-      SAUCE_APPIUM_VERSION: ${{ vars.SAUCE_APPIUM_VERSION || '2.11.3' }}
-      SAUCE_BUILD: ebac-store-ios-gh-${{ github.run_number }}
-      SAUCE_NAME: EBAC Store - Checkout iOS (GH #${{ github.run_number }})
+      BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
+      BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+      BROWSERSTACK_DEVICE_NAME: ${{ inputs.device || 'iPhone 15' }}
+      BROWSERSTACK_OS_VERSION: ${{ inputs.os_version || '17' }}
+      BROWSERSTACK_PROJECT: EBAC Store
+      BROWSERSTACK_BUILD: ebac-store-ios-gh-${{ github.run_number }}
+      BROWSERSTACK_NAME: EBAC Store - Checkout iOS (GH #${{ github.run_number }})
 
     steps:
       - name: Checkout
@@ -55,46 +53,46 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Validar credenciais do SauceLabs
+      - name: Validar credenciais do BrowserStack
         env:
-          HAS_USERNAME: ${{ secrets.SAUCE_USERNAME != '' }}
-          HAS_ACCESS_KEY: ${{ secrets.SAUCE_ACCESS_KEY != '' }}
+          HAS_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME != '' }}
+          HAS_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY != '' }}
         run: |
-          echo "SAUCE_USERNAME configurado: $HAS_USERNAME"
-          echo "SAUCE_ACCESS_KEY configurado: $HAS_ACCESS_KEY"
+          echo "BROWSERSTACK_USERNAME configurado: $HAS_USERNAME"
+          echo "BROWSERSTACK_ACCESS_KEY configurado: $HAS_ACCESS_KEY"
           if [ "$HAS_USERNAME" != "true" ] || [ "$HAS_ACCESS_KEY" != "true" ]; then
-            echo "::error::Configure os secrets SAUCE_USERNAME e SAUCE_ACCESS_KEY em Settings > Secrets and variables > Actions > Repository secrets."
+            echo "::error::Configure os secrets BROWSERSTACK_USERNAME e BROWSERSTACK_ACCESS_KEY em Settings > Secrets and variables > Actions > Repository secrets."
             exit 1
           fi
 
       - name: Instalar dependências
         run: npm ci
 
-      - name: Baixar app de simulador
+      - name: Baixar app (.ipa para device real)
         run: |
           mkdir -p app
           curl -fsSL --retry 3 \
-            -o app/LojaEBAC-sim.zip \
-            https://raw.githubusercontent.com/EBAC-QE/ebac-store-mobile-tests/ios/app/LojaEBAC-sim.zip
-          ls -lh app/LojaEBAC-sim.zip
+            -o app/LojaEBAC.ipa \
+            https://raw.githubusercontent.com/EBAC-QE/ebac-store-mobile-tests/ios/app/LojaEBAC.ipa
+          ls -lh app/LojaEBAC.ipa
 
-      - name: Enviar app para o Sauce Storage
-        run: node scripts/sauce-upload.mjs app/LojaEBAC-sim.zip
+      - name: Enviar app para o BrowserStack
+        run: node scripts/bs-upload.mjs app/LojaEBAC.ipa
 
-      - name: Executar testes no SauceLabs
+      - name: Executar testes no BrowserStack App Automate
         run: npx wdio run ./config/wdio.conf.js --suite "${{ inputs.suite || 'checkout' }}"
 
       - name: Coletar vídeo e logs
         if: always()
-        run: node scripts/sauce-artifacts.mjs
+        run: node scripts/bs-artifacts.mjs
 
       - name: Publicar artefatos
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sauce-artifacts-${{ github.run_number }}
+          name: browserstack-artifacts-${{ github.run_number }}
           path: |
-            sauce-artifacts/
+            browserstack-artifacts/
             allure-results/
           if-no-files-found: warn
           retention-days: 30

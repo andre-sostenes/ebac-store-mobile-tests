@@ -1,6 +1,6 @@
 # EBAC Store — Testes iOS
 
-[![Mobile CI - SauceLabs](https://github.com/andre-sostenes/ebac-store-mobile-tests/actions/workflows/ci.yml/badge.svg?branch=ci)](https://github.com/andre-sostenes/ebac-store-mobile-tests/actions/workflows/ci.yml)
+[![Mobile CI - BrowserStack](https://github.com/andre-sostenes/ebac-store-mobile-tests/actions/workflows/ci.yml/badge.svg?branch=ci)](https://github.com/andre-sostenes/ebac-store-mobile-tests/actions/workflows/ci.yml)
 
 Suíte de testes automatizados para iOS do app **LojaEBAC**, cobrindo o fluxo completo de compra:
 
@@ -14,14 +14,14 @@ Suíte de testes automatizados para iOS do app **LojaEBAC**, cobrindo o fluxo co
 8. Validação da tela de pedido concluído
 
 Projeto construído com **WebdriverIO v8 + Appium 2 + XCUITest + Mocha**, com execução em
-**Device Farm (SauceLabs) via GitHub Actions**.
+**device real no BrowserStack App Automate via GitHub Actions**.
 
 ## Estrutura
 
 ```
-.github/workflows/ci.yml  Pipeline de CI (GitHub Actions + SauceLabs)
-config/                 Configurações do WDIO (local, SauceLabs, suites, hooks e reports)
-scripts/                Upload do app e download de artefatos do SauceLabs
+.github/workflows/ci.yml  Pipeline de CI (GitHub Actions + BrowserStack App Automate)
+config/                 Configurações do WDIO (local, BrowserStack, suites, hooks e reports)
+scripts/                Upload do app e download de artefatos do BrowserStack
 test/
   data/user.js          Credenciais e dados usados nos testes
   pageobjects/          Page Objects das telas do app
@@ -38,12 +38,11 @@ app/                    Coloque aqui o aplicativo (não versionado)
 - Node.js conforme a versão do Appium escolhida:
   - Appium 3.9: Node `^20.19.0 || ^22.12.0 || >= 24`
   - Appium 2.x: Node 18 ou superior
-- Appium 2 ou 3 (veja a tabela de compatibilidade abaixo)
-- macOS com Xcode e um simulador iOS **ou** uma conta SauceLabs
+- Appium 2 ou 3 (veja a tabela de compatibilidade abaixo) **apenas para execução local**
+- macOS com Xcode e um simulador iOS **ou** uma conta BrowserStack
 - App do exercício:
   - Simulador local: `LojaEBAC-sim.app`
-  - Simulador no SauceLabs: `LojaEBAC-sim.zip`
-  - Device real: `LojaEBAC.ipa`
+  - Device real (BrowserStack): `LojaEBAC.ipa`
   - Download: <https://github.com/EBAC-QE/ebac-store-mobile-tests/tree/ios/app>
 
 Instale as dependências e o driver do XCUITest:
@@ -63,7 +62,7 @@ appium driver install xcuitest@<versão-compatível>
 | 3.x | `xcuitest@12.22.8` | Xcode 16+ |
 | 4 beta | `xcuitest@13.x` | Não recomendado |
 
-Inicie o Appium em um terminal separado:
+Inicie o Appium em um terminal separado (somente execução local):
 
 ```bash
 appium
@@ -79,20 +78,27 @@ cp .env.example .env
 
 Para rodar no simulador local, baixe o `LojaEBAC-sim.app` e coloque em `app/LojaEBAC-sim.app` (ou defina `APP_PATH` no `.env`).
 
-Para rodar no SauceLabs, preencha `SAUCE_USERNAME` e `SAUCE_ACCESS_KEY`, envie o build de simulador e use `ENVIRONMENT=saucelabs`:
+Para rodar no BrowserStack, preencha `BROWSERSTACK_USERNAME` e `BROWSERSTACK_ACCESS_KEY`,
+envie o `.ipa` e use `ENVIRONMENT=browserstack`:
 
 ```powershell
-$env:ENVIRONMENT="saucelabs"
-npm.cmd run sauce:upload -- app\LojaEBAC-sim.zip
-npm.cmd run test:sauce
-npm.cmd run sauce:artifacts
+$env:ENVIRONMENT="browserstack"
+$env:BROWSERSTACK_USERNAME="seu-usuario"
+$env:BROWSERSTACK_ACCESS_KEY="sua-access-key"
+npm.cmd run bs:upload -- app\LojaEBAC.ipa
+$env:BROWSERSTACK_APP_URL="bs://..."   # valor impresso no upload
+npm.cmd run test:browserstack
+npm.cmd run bs:artifacts
 ```
 
-O script de upload imprime a capability `appium:app=storage:filename=...`; por padrão o `sauce.conf.js` usa `storage:filename=LojaEBAC-sim.zip`, `iPhone 15 Simulator` e iOS `17.0`. Esses valores podem ser alterados no `.env` (`SAUCE_APP`, `SAUCE_DEVICE_NAME`, `SAUCE_PLATFORM_VERSION`).
+O upload imprime o `app_url` (`bs://...`) usado na capability `appium:app`. Por padrão o
+`browserstack.conf.js` usa um **iPhone 15 com iOS 17** (device real, Tier 2) e grava vídeo,
+logs de debug e logs de rede. Os valores podem ser alterados no `.env`
+(`BROWSERSTACK_APP_URL`, `BROWSERSTACK_DEVICE_NAME`, `BROWSERSTACK_OS_VERSION`,
+`BROWSERSTACK_BUILD`, `BROWSERSTACK_NAME`).
 
-> O build `LojaEBAC-sim.zip` é compilado apenas para `x86_64`. No SauceLabs ele só roda em
-> simuladores hospedados em máquinas Intel (iOS `17.0`). Em versões mais novas (ex.: `17.5`)
-> a sessão falha com *"compiled for Intel but ARM platform was requested"*.
+> O build `LojaEBAC-sim.zip` é compilado apenas para `x86_64` e só serve ao simulador.
+> No BrowserStack App Automate use sempre o `LojaEBAC.ipa`.
 
 ## Execução
 
@@ -122,36 +128,34 @@ No PowerShell:
 $env:REPORTER="true"; npm run test:checkout
 ```
 
-## CI — GitHub Actions + SauceLabs
+## CI — GitHub Actions + BrowserStack App Automate
 
-O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) executa a suíte no
-SauceLabs a cada push na branch `ci`. Também pode ser disparado manualmente em
-**Actions → Mobile CI - SauceLabs → Run workflow**, escolhendo a suíte e o device.
+O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) executa a suíte em um
+device real a cada push na branch `ci`. Também pode ser disparado manualmente em
+**Actions → Mobile CI - BrowserStack → Run workflow**, escolhendo a suíte, o device e a versão do iOS.
 
-### Secrets e variáveis
+### Secrets
 
 Em **Settings → Secrets and variables → Actions** do repositório:
 
 | Nome | Tipo | Obrigatório | Descrição |
 | --- | --- | --- | --- |
-| `SAUCE_USERNAME` | secret | sim | Usuário do SauceLabs |
-| `SAUCE_ACCESS_KEY` | secret | sim | Access key do SauceLabs |
-| `SAUCE_REGION` | variable | não | `us-west-1` (padrão) ou `eu-central-1` |
-| `SAUCE_APPIUM_VERSION` | variable | não | Versão do Appium no Sauce (padrão `2.11.3`) |
+| `BROWSERSTACK_USERNAME` | secret | sim | Usuário da conta BrowserStack |
+| `BROWSERSTACK_ACCESS_KEY` | secret | sim | Access key da conta BrowserStack |
 
 Sem os dois secrets o pipeline falha na primeira etapa com uma mensagem explícita.
 
 ### O que o pipeline faz
 
 1. `npm ci`
-2. Baixa o `LojaEBAC-sim.zip` do repositório oficial da EBAC
-3. Envia o app para o Sauce Storage (`scripts/sauce-upload.mjs`)
-4. Executa o `checkout.test.js` no SauceLabs (padrão: iPhone 15 Simulator, iOS 17.0)
-5. Baixa vídeo e logs da sessão (`scripts/sauce-artifacts.mjs`)
-6. Publica `sauce-artifacts/` e `allure-results/` como artifacts e escreve o link do job no resumo da execução
+2. Baixa o `LojaEBAC.ipa` do repositório oficial da EBAC
+3. Envia o app para o BrowserStack (`scripts/bs-upload.mjs`)
+4. Executa o `checkout.test.js` no BrowserStack App Automate (padrão: iPhone 15, iOS 17)
+5. Baixa o vídeo e os logs da sessão (`scripts/bs-artifacts.mjs`)
+6. Publica `browserstack-artifacts/` e `allure-results/` como artifacts e escreve o link da sessão no resumo da execução
 
-O vídeo fica em `sauce-artifacts/video.mp4` (artifact `sauce-artifacts-<run>`) e o job
-em `https://app.saucelabs.com/tests/<session-id>`.
+O vídeo fica em `browserstack-artifacts/video.mp4` (artifact `browserstack-artifacts-<run>`);
+o link da sessão é `https://app-automate.browserstack.com/dashboard/v2/sessions/<session-id>`.
 
 ## Detalhes da implementação
 
@@ -161,8 +165,10 @@ em `https://app.saucelabs.com/tests/<session-id>`.
 - Os campos do formulário de endereço não possuem `testID` no app; por isso são localizados pela ordem dos `XCUIElementTypeTextField` da tela (Name, Mobile Number, Address, City, State, ZipCode).
 - O app usa `tabBarHideOnKeyboard` e, no device farm, o teclado virtual está aberto quando o login é enviado. Se o evento de "teclado fechado" não for processado, a tab bar fica com `display: none` e os elementos `tab-*` desaparecem da árvore de acessibilidade — mesmo com o app já na Home. Por isso o teste reinicia o app logo após o login (`loginPage.waitForHome()`), o que restaura a barra e mantém a sessão; o `home.page.js` repete esse fallback caso alguma aba não apareça.
 - A busca é feita na aba **Browse**, não na Home: a barra de busca da Home só é renderizada depois que a lista de produtos termina de carregar, então `~search-products` pode não existir por dezenas de segundos no device farm.
-- No SauceLabs, uma busca por elemento **inexistente** pode levar mais de um minuto (o WDA varre a árvore inteira). O teste foi escrito para esperar por elementos que devem aparecer (esperas positivas) em vez de aguardar o desaparecimento de outros.
-- A Home renderiza a lista de produtos sem virtualização, o que gera milhares de nós na árvore de acessibilidade. Em simuladores lentos o XCUITest estoura o timeout de 60 s e cada busca chega a levar 60–270 s. O hook `before` aplica settings que limitam o snapshot (`useFirstMatch`, `snapshotMaxDepth`, `snapshotMaxChildren`, `animationCoolOffTimeout`, `waitForIdleTimeout` e `reduceMotion`); os cliques usam o helper `tap.js`, que tolera o erro de *stale element* quando a navegação desmonta o elemento clicado.
+- O teclado virtual é fechado explicitamente após a busca (`driver.hideKeyboard()`). Sem isso, o `tabBarHideOnKeyboard` do app deixa a barra de abas com `display: none`; o elemento `cart` continua na árvore, mas em cache e invisível, e os cliques em Home/carrinho são ignorados silenciosamente.
+- O termo de busca é `Produto Original` (itens com `quantity: 10` no backend). Termos como `In` ou `Camiseta` exibem primeiro cards sem estoque: a API `public/updateCart/{userId}` responde `401 "0 quantities available..."`, o app mostra apenas um toast e o carrinho continua vazio. `browsePage.selectProduct()` filtra cards realmente visíveis e `productPage.addToCart()` espera a navegação automática para `Carts`, falhando com diagnóstico se ela não acontecer.
+- Uma busca por elemento **inexistente** pode levar mais de um minuto (o WDA varre a árvore inteira). O teste foi escrito para esperar por elementos que devem aparecer (esperas positivas) em vez de aguardar o desaparecimento de outros.
+- A Home renderiza a lista de produtos sem virtualização, o que gera milhares de nós na árvore de acessibilidade. O hook `before` aplica settings que limitam o snapshot (`useFirstMatch`, `snapshotMaxDepth`, `snapshotMaxChildren`, `animationCoolOffTimeout`, `waitForIdleTimeout` e `reduceMotion`); os cliques usam o helper `tap.js`, que tolera o erro de *stale element* quando a navegação desmonta o elemento clicado.
 
 ## Solução de problemas
 
@@ -186,11 +192,12 @@ O driver já está instalado; o comando de instalação não precisa ser repetid
 
 **Testes iOS não iniciam no Windows**
 
-XCUITest depende do Xcode/WebDriverAgent, disponíveis apenas no macOS. No Windows o projeto instala e valida a configuração, mas a execução precisa de um Mac ou do SauceLabs (`ENVIRONMENT=saucelabs`).
+XCUITest depende do Xcode/WebDriverAgent, disponíveis apenas no macOS. No Windows a execução
+local não é possível; use o BrowserStack (`ENVIRONMENT=browserstack`) ou o GitHub Actions.
 
 ## Submissão do exercício
 
 - Repositório (público): <https://github.com/andre-sostenes/ebac-store-mobile-tests>
 - Branch utilizada: **`ci`**
 - Pipeline: <https://github.com/andre-sostenes/ebac-store-mobile-tests/actions/workflows/ci.yml>
-- Vídeo da execução: artifact `sauce-artifacts-<run>` (ou link do job no SauceLabs)
+- Vídeo da execução: artifact `browserstack-artifacts-<run>` (ou link da sessão no BrowserStack)

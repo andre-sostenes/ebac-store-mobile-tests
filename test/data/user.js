@@ -12,4 +12,8 @@ export const address = {
     zipCode: '01001000'
 }
 
-export const searchTerm = 'In'
+// Termos cujos cards já visíveis na busca têm estoque no backend. Buscas como
+// "In" ou "Camiseta" mostram primeiro itens com quantity: 0; nesses casos a
+// API `public/updateCart/{userId}` responde 401 e o carrinho fica vazio.
+export const searchTerm = 'Produto Original'
+export const inStockPrice = '100'

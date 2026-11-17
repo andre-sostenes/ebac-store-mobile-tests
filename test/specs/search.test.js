@@ -5,8 +5,9 @@ import { searchTerm } from '../data/user.js'
 
 describe('Search', () => {
     it('should list products with prices', async () => {
-        await homePage.openMenu('Home')
-        await homePage.openSearch()
+        // A busca é feita na aba Browse: a barra da Home só é renderizada
+        // depois que a lista de produtos termina de carregar no device farm.
+        await homePage.openMenu('Browse')
         await browsePage.search(searchTerm)
 
         await browser.waitUntil(
