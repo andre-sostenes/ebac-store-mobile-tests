@@ -17,7 +17,7 @@ on:
       platform_version:
         description: Versão do iOS
         type: string
-        default: '17.5'
+        default: '17.0'
 
 permissions:
   contents: read
@@ -40,7 +40,7 @@ jobs:
       SAUCE_REGION: ${{ vars.SAUCE_REGION || 'us-west-1' }}
       SAUCE_APP: storage:filename=LojaEBAC-sim.zip
       SAUCE_DEVICE_NAME: ${{ inputs.device || 'iPhone 15 Simulator' }}
-      SAUCE_PLATFORM_VERSION: ${{ inputs.platform_version || '17.5' }}
+      SAUCE_PLATFORM_VERSION: ${{ inputs.platform_version || '17.0' }}
       SAUCE_APPIUM_VERSION: ${{ vars.SAUCE_APPIUM_VERSION || '2.11.3' }}
       SAUCE_BUILD: ebac-store-ios-gh-${{ github.run_number }}
       SAUCE_NAME: EBAC Store - Checkout iOS (GH #${{ github.run_number }})
@@ -56,9 +56,14 @@ jobs:
           cache: npm
 
       - name: Validar credenciais do SauceLabs
+        env:
+          HAS_USERNAME: ${{ secrets.SAUCE_USERNAME != '' }}
+          HAS_ACCESS_KEY: ${{ secrets.SAUCE_ACCESS_KEY != '' }}
         run: |
-          if [ -z "$SAUCE_USERNAME" ] || [ -z "$SAUCE_ACCESS_KEY" ]; then
-            echo "::error::Configure os secrets SAUCE_USERNAME e SAUCE_ACCESS_KEY neste repositório."
+          echo "SAUCE_USERNAME configurado: $HAS_USERNAME"
+          echo "SAUCE_ACCESS_KEY configurado: $HAS_ACCESS_KEY"
+          if [ "$HAS_USERNAME" != "true" ] || [ "$HAS_ACCESS_KEY" != "true" ]; then
+            echo "::error::Configure os secrets SAUCE_USERNAME e SAUCE_ACCESS_KEY em Settings > Secrets and variables > Actions > Repository secrets."
             exit 1
           fi
 

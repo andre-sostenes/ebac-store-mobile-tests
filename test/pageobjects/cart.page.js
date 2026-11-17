@@ -1,4 +1,5 @@
-import { $ } from '@wdio/globals'
+import { $, browser } from '@wdio/globals'
+import { tap } from '../helpers/tap.js'
 
 class CartPage {
     get addressName () {
@@ -18,7 +19,7 @@ class CartPage {
     }
 
     async waitForCart () {
-        await this.continueButton.waitForDisplayed({ timeout: 20000 })
+        await this.continueButton.waitForDisplayed({ timeout: 60000 })
     }
 
     /**
@@ -29,7 +30,7 @@ class CartPage {
         await this.waitForCart()
 
         try {
-            await this.addressName.waitForDisplayed({ timeout: 5000 })
+            await this.addressName.waitForDisplayed({ timeout: 10000 })
             return true
         } catch (error) {
             return false
@@ -38,7 +39,7 @@ class CartPage {
 
     async openAddressForm () {
         await this.addNewAddressLink.waitForDisplayed()
-        await this.addNewAddressLink.click()
+        await tap(this.addNewAddressLink)
     }
 
     async continueToPayment () {
@@ -46,11 +47,11 @@ class CartPage {
         await browser.waitUntil(
             async () => this.continueButton.isEnabled(),
             {
-                timeout: 20000,
+                timeout: 60000,
                 timeoutMsg: 'O botão "Continue to payment" permaneceu desabilitado'
             }
         )
-        await this.continueButton.click()
+        await tap(this.continueButton)
     }
 }
 

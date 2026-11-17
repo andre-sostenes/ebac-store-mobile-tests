@@ -88,7 +88,11 @@ npm.cmd run test:sauce
 npm.cmd run sauce:artifacts
 ```
 
-O script de upload imprime a capability `appium:app=storage:filename=...`; por padrão o `sauce.conf.js` usa `storage:filename=LojaEBAC-sim.zip`, `iPhone 15 Simulator` e iOS `17.5`. Esses valores podem ser alterados no `.env` (`SAUCE_APP`, `SAUCE_DEVICE_NAME`, `SAUCE_PLATFORM_VERSION`).
+O script de upload imprime a capability `appium:app=storage:filename=...`; por padrão o `sauce.conf.js` usa `storage:filename=LojaEBAC-sim.zip`, `iPhone 15 Simulator` e iOS `17.0`. Esses valores podem ser alterados no `.env` (`SAUCE_APP`, `SAUCE_DEVICE_NAME`, `SAUCE_PLATFORM_VERSION`).
+
+> O build `LojaEBAC-sim.zip` é compilado apenas para `x86_64`. No SauceLabs ele só roda em
+> simuladores hospedados em máquinas Intel (iOS `17.0`). Em versões mais novas (ex.: `17.5`)
+> a sessão falha com *"compiled for Intel but ARM platform was requested"*.
 
 ## Execução
 
@@ -142,7 +146,7 @@ Sem os dois secrets o pipeline falha na primeira etapa com uma mensagem explíci
 1. `npm ci`
 2. Baixa o `LojaEBAC-sim.zip` do repositório oficial da EBAC
 3. Envia o app para o Sauce Storage (`scripts/sauce-upload.mjs`)
-4. Executa o `checkout.test.js` no SauceLabs (padrão: iPhone 15 Simulator, iOS 17.5)
+4. Executa o `checkout.test.js` no SauceLabs (padrão: iPhone 15 Simulator, iOS 17.0)
 5. Baixa vídeo e logs da sessão (`scripts/sauce-artifacts.mjs`)
 6. Publica `sauce-artifacts/` e `allure-results/` como artifacts e escreve o link do job no resumo da execução
 
@@ -155,6 +159,10 @@ em `https://app.saucelabs.com/tests/<session-id>`.
 - O botão de checkout do app só abre o Razorpay quando a opção de pagamento não é selecionada. Como o teste seleciona **Cash on Delivery** (`option-1`), o pedido é finalizado direto pela API, sem depender do SDK nativo do Razorpay.
 - O endereço é cadastrado condicionalmente: o teste verifica se `addressName` já está visível no carrinho. Caso contrário, preenche o formulário e salva.
 - Os campos do formulário de endereço não possuem `testID` no app; por isso são localizados pela ordem dos `XCUIElementTypeTextField` da tela (Name, Mobile Number, Address, City, State, ZipCode).
+- O app usa `tabBarHideOnKeyboard` e, no device farm, o teclado virtual está aberto quando o login é enviado. Se o evento de "teclado fechado" não for processado, a tab bar fica com `display: none` e os elementos `tab-*` desaparecem da árvore de acessibilidade — mesmo com o app já na Home. Por isso o teste reinicia o app logo após o login (`loginPage.waitForHome()`), o que restaura a barra e mantém a sessão; o `home.page.js` repete esse fallback caso alguma aba não apareça.
+- A busca é feita na aba **Browse**, não na Home: a barra de busca da Home só é renderizada depois que a lista de produtos termina de carregar, então `~search-products` pode não existir por dezenas de segundos no device farm.
+- No SauceLabs, uma busca por elemento **inexistente** pode levar mais de um minuto (o WDA varre a árvore inteira). O teste foi escrito para esperar por elementos que devem aparecer (esperas positivas) em vez de aguardar o desaparecimento de outros.
+- A Home renderiza a lista de produtos sem virtualização, o que gera milhares de nós na árvore de acessibilidade. Em simuladores lentos o XCUITest estoura o timeout de 60 s e cada busca chega a levar 60–270 s. O hook `before` aplica settings que limitam o snapshot (`useFirstMatch`, `snapshotMaxDepth`, `snapshotMaxChildren`, `animationCoolOffTimeout`, `waitForIdleTimeout` e `reduceMotion`); os cliques usam o helper `tap.js`, que tolera o erro de *stale element* quando a navegação desmonta o elemento clicado.
 
 ## Solução de problemas
 

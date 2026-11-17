@@ -10,7 +10,7 @@ class OrderSuccessPage {
     }
 
     async waitForSuccess () {
-        await this.successImage.waitForDisplayed({ timeout: 30000 })
+        await this.successImage.waitForDisplayed({ timeout: 60000 })
     }
 }
 

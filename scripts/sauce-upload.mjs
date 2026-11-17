@@ -21,18 +21,25 @@ try {
 const env = sauceEnv()
 const fileName = process.env.SAUCE_STORAGE_NAME || path.basename(appPath)
 const storage = `storage:filename=${fileName}`
-const uploadUrl = `${env.apiBase}/rest/v1/storage/${env.username}/${encodeURIComponent(fileName)}?overwrite=true`
+const uploadUrl = `${env.apiBase}/v1/storage/upload`
 
 console.log(`Enviando ${fileName} (${formatBytes(stats.size)}) para o Sauce Storage (${env.region})...`)
 
 const body = await fs.readFile(appPath)
+
+// A API atual (File Storage API) recebe multipart/form-data.
+// O endpoint antigo POST /rest/v1/storage/{usuario}/{arquivo} foi descontinuado.
+const form = new FormData()
+form.append('payload', new Blob([body]), fileName)
+form.append('name', fileName)
+form.append('description', 'EBAC Store - iOS checkout tests')
+
 const response = await request(uploadUrl, {
     method: 'POST',
     headers: {
-        Authorization: env.auth,
-        'Content-Type': 'application/octet-stream'
+        Authorization: env.auth
     },
-    body
+    body: form
 })
 
 const uploaded = await response.json().catch(() => ({}))
@@ -42,6 +49,10 @@ console.log(`  Arquivo: ${fileName}`)
 console.log(`  Capability: appium:app=${storage}`)
 if (uploaded.item && uploaded.item.id) {
     console.log(`  ID no storage: ${uploaded.item.id}`)
+}
+if (uploaded.item && uploaded.item.metadata) {
+    const meta = uploaded.item.metadata
+    console.log(`  Build: ${meta.is_simulator ? 'simulador' : 'device real'} | min_os: ${meta.min_os ?? '?'} | target_os: ${meta.target_os ?? '?'}`)
 }
 
 await appendSummary([

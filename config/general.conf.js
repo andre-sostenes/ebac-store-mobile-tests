@@ -6,13 +6,13 @@ import { hooksConf } from './hooks.conf.js'
 export let generalConf = {
     maxInstances: 1,
     logLevel: process.env.LOG_LEVEL || 'info',
-    waitforTimeout: 15000,
+    waitforTimeout: Number(process.env.WAITFOR_TIMEOUT || 60000),
     connectionRetryTimeout: 180000,
     connectionRetryCount: 3,
     framework: 'mocha',
     mochaOpts: {
         ui: 'bdd',
-        timeout: 180000
+        timeout: Number(process.env.MOCHA_TIMEOUT || 1200000)
     },
     ...specsConf,
     ...suitesConf,

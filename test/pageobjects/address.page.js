@@ -1,4 +1,5 @@
-import { $, $$, driver } from '@wdio/globals'
+import { $, $$ } from '@wdio/globals'
+import { tap } from '../helpers/tap.js'
 
 class AddressPage {
     get saveButton () {
@@ -19,12 +20,6 @@ class AddressPage {
 
         await field.waitForDisplayed()
         await field.setValue(value)
-
-        try {
-            await driver.hideKeyboard()
-        } catch (error) {
-            // O teclado pode já ter sido fechado automaticamente.
-        }
     }
 
     /**
@@ -49,7 +44,7 @@ class AddressPage {
         }
 
         await this.saveButton.waitForDisplayed()
-        await this.saveButton.click()
+        await tap(this.saveButton)
     }
 }
 

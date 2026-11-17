@@ -1,4 +1,4 @@
-import { expect } from '@wdio/globals'
+import { browser, expect } from '@wdio/globals'
 import homePage from '../pageobjects/home.page.js'
 import loginPage from '../pageobjects/login.page.js'
 import profilePage from '../pageobjects/profile.page.js'
@@ -24,16 +24,20 @@ describe('Checkout', () => {
 
         if (await loginPage.email.isExisting()) {
             await loginPage.login(user.email, user.password)
-            // Em caso de sessão recém-criada, volta para a raiz da aba Account.
-            await homePage.openMenu('Account')
+            // O login redireciona para a Home, mas deixa a tab bar oculta no
+            // device farm; o restart restaura a barra e mantém a sessão.
+            await loginPage.waitForHome()
         }
+
+        await homePage.openMenu('Account')
 
         await expect(profilePage.customerEmail).toBeDisplayed()
         expect(await profilePage.customerEmail.getText()).toContain(user.email)
 
         // 2. Browse + escolha de um produto
-        await homePage.openMenu('Home')
-        await homePage.openSearch()
+        // A busca é feita na aba Browse: na Home a barra de busca só é
+        // renderizada depois que a lista de produtos termina de carregar.
+        await homePage.openMenu('Browse')
         await browsePage.search(searchTerm)
         await browsePage.selectProduct(0)
         await expect(productPage.addToCartButton).toBeDisplayed()

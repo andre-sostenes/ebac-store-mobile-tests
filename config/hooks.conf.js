@@ -5,6 +5,35 @@ import { driver } from '@wdio/globals'
 const BUNDLE_ID = 'br.com.lojaebac'
 const SAUCE_SESSION_FILE = process.env.SAUCE_SESSION_FILE || path.resolve('.sauce', 'session-id.txt')
 
+/**
+ * A Home do app renderiza a lista completa de produtos (sem virtualização),
+ * o que gera milhares de nós na árvore de acessibilidade. No device farm o
+ * snapshot do XCUITest passa a estourar o timeout de 60 s do XCTest e cada
+ * busca de elemento leva de 60 a 270 s (medido em sessão real do SauceLabs).
+ *
+ * Limitar a profundidade e a quantidade de filhos por nó e usar a primeira
+ * ocorrência reduz o custo do snapshot, mantendo acessíveis os testIDs que o
+ * teste usa (barra de abas, campo de busca, botões).
+ */
+const XCUITEST_SETTINGS = {
+    useFirstMatch: true,
+    snapshotMaxDepth: 25,
+    snapshotMaxChildren: 40,
+    animationCoolOffTimeout: 0,
+    waitForIdleTimeout: 0,
+    reduceMotion: true,
+    useJSONSource: true
+}
+
+async function applyXcuitestSettings () {
+    try {
+        await driver.updateSettings(XCUITEST_SETTINGS)
+        console.log(`Settings do XCUITest aplicados: ${JSON.stringify(XCUITEST_SETTINGS)}`)
+    } catch (error) {
+        console.warn(`Não foi possível aplicar os settings do XCUITest: ${error.message}`)
+    }
+}
+
 export let hooksConf = {
     /**
      * Guarda o ID da sessão do SauceLabs para que o pipeline consiga baixar
@@ -25,6 +54,8 @@ export let hooksConf = {
         } catch (error) {
             console.warn(`Não foi possível salvar o ID da sessão do SauceLabs: ${error.message}`)
         }
+
+        await applyXcuitestSettings()
     },
 
     beforeTest: async function () {
@@ -41,12 +72,6 @@ export let hooksConf = {
     },
 
     afterTest: async function () {
-        try {
-            await driver.takeScreenshot()
-        } catch (error) {
-            console.warn(`Não foi possível capturar o screenshot: ${error.message}`)
-        }
-
         try {
             await driver.execute('mobile: terminateApp', { bundleId: BUNDLE_ID })
         } catch (error) {

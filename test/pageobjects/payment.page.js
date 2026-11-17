@@ -1,4 +1,5 @@
-import { $ } from '@wdio/globals'
+import { $, browser } from '@wdio/globals'
+import { tap } from '../helpers/tap.js'
 
 class PaymentPage {
     get cashOnDeliveryOption () {
@@ -15,7 +16,7 @@ class PaymentPage {
 
     async selectCashOnDelivery () {
         await this.cashOnDeliveryOption.waitForDisplayed()
-        await this.cashOnDeliveryOption.click()
+        await tap(this.cashOnDeliveryOption)
     }
 
     async completeCheckout () {
@@ -23,11 +24,11 @@ class PaymentPage {
         await browser.waitUntil(
             async () => this.checkoutButton.isEnabled(),
             {
-                timeout: 20000,
+                timeout: 60000,
                 timeoutMsg: 'O botão "Checkout" permaneceu desabilitado'
             }
         )
-        await this.checkoutButton.click()
+        await tap(this.checkoutButton)
     }
 }
 

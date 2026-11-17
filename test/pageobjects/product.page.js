@@ -1,4 +1,5 @@
 import { $ } from '@wdio/globals'
+import { tap } from '../helpers/tap.js'
 
 class ProductPage {
     get addToCartButton () {
@@ -15,12 +16,12 @@ class ProductPage {
 
     async addToCart () {
         await this.addToCartButton.waitForDisplayed()
-        await this.addToCartButton.click()
+        await tap(this.addToCartButton)
     }
 
     async goBack () {
         await this.backButton.waitForDisplayed()
-        await this.backButton.click()
+        await tap(this.backButton)
     }
 }
 

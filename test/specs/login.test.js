@@ -1,4 +1,4 @@
-import { expect } from '@wdio/globals'
+import { browser, expect } from '@wdio/globals'
 import homePage from '../pageobjects/home.page.js'
 import loginPage from '../pageobjects/login.page.js'
 import profilePage from '../pageobjects/profile.page.js'
@@ -17,8 +17,10 @@ describe('Login', () => {
 
         if (await loginPage.email.isExisting()) {
             await loginPage.login(user.email, user.password)
-            await homePage.openMenu('Account')
+            await loginPage.waitForHome()
         }
+
+        await homePage.openMenu('Account')
 
         await expect(profilePage.customerEmail).toBeDisplayed()
         expect(await profilePage.customerEmail.getText()).toContain(user.email)

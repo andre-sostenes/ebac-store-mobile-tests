@@ -35,10 +35,11 @@ export let sauceConf = {
             platformName: 'iOS',
             'appium:app': process.env.SAUCE_APP || 'storage:filename=LojaEBAC-sim.zip',
             'appium:deviceName': process.env.SAUCE_DEVICE_NAME || 'iPhone 15 Simulator',
-            'appium:platformVersion': process.env.SAUCE_PLATFORM_VERSION || '17.5',
+            'appium:platformVersion': process.env.SAUCE_PLATFORM_VERSION || '17.0',
             'appium:automationName': 'XCUITest',
             'appium:autoAcceptAlerts': true,
-            'appium:newCommandTimeout': 240,
+            'appium:waitForQuiescence': false,
+            'appium:newCommandTimeout': 600,
             'appium:wdaLaunchTimeout': 180000,
             'sauce:options': {
                 build: process.env.SAUCE_BUILD || 'ebac-store-ios',
